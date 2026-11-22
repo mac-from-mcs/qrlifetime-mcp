@@ -6,13 +6,32 @@ import { z } from 'zod';
 import { createClient } from './api.js';
 import { MAX_LENGTH, qrSvg } from './qr.js';
 
-export const VERSION = '1.0.0';
+export const VERSION = '1.0.1';
 
 const text = (value) => ({ content: [{ type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }] });
+const httpUrl = z
+  .string()
+  .url()
+  .refine((v) => /^https?:$/.test(new URL(v).protocol), 'must be an http or https URL');
 const failure = (err) => ({ isError: true, content: [{ type: 'text', text: err?.message || String(err) }] });
 
+/**
+ * API base override: https only (http allowed for localhost), so the key is never sent in clear
+ * or to a malformed URL. Anything else falls back to the default with a warning on stderr.
+ */
+export function safeBase(value) {
+  if (!value) return undefined;
+  try {
+    const u = new URL(value);
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
+    if (u.protocol === 'https:' || (u.protocol === 'http:' && local)) return value.replace(/\/+$/, '');
+  } catch { /* invalid URL */ }
+  console.error(`qrlifetime-mcp: ignoring QRLIFETIME_API_BASE (${value}): it must be an https URL.`);
+  return undefined;
+}
+
 /** Builds the MCP server. `client` is injectable for tests. */
-export function buildServer({ client = createClient({ apiKey: process.env.QRLIFETIME_API_KEY, baseUrl: process.env.QRLIFETIME_API_BASE || undefined }) } = {}) {
+export function buildServer({ client = createClient({ apiKey: process.env.QRLIFETIME_API_KEY, baseUrl: safeBase(process.env.QRLIFETIME_API_BASE) }) } = {}) {
   const server = new McpServer({ name: 'qrlifetime', version: VERSION });
 
   server.registerTool(
@@ -29,7 +48,7 @@ export function buildServer({ client = createClient({ apiKey: process.env.QRLIFE
         foreground: z.string().optional().describe('Hex colour of the modules, e.g. #000000. Keep it dark on a light background.'),
         background: z.string().optional().describe('Hex background colour, e.g. #ffffff.'),
         size: z.number().int().min(64).max(4096).optional().describe('Width and height of the SVG in pixels (default 512).'),
-        output_path: z.string().optional().describe('Absolute path of an .svg file to write. When omitted, the SVG is returned as text.'),
+        output_path: z.string().optional().describe('Absolute path of a new .svg file to write (an existing file is never overwritten). When omitted, the SVG is returned as text.'),
       },
       annotations: { readOnlyHint: false, openWorldHint: false },
     },
@@ -38,7 +57,13 @@ export function buildServer({ client = createClient({ apiKey: process.env.QRLIFE
         const { svg, modules, errorCorrection } = qrSvg(value, { errorCorrection: error_correction, foreground, background, size });
         if (output_path) {
           if (!isAbsolute(output_path) || !output_path.toLowerCase().endsWith('.svg')) throw new Error('output_path must be an absolute path ending in .svg.');
-          await writeFile(output_path, svg, 'utf8');
+          // 'wx' never overwrites: an existing file (or symlink) at that path makes the call fail.
+          try {
+            await writeFile(output_path, svg, { encoding: 'utf8', flag: 'wx' });
+          } catch (err) {
+            if (err?.code === 'EEXIST') throw new Error(`${output_path} already exists; choose another file name.`);
+            throw err;
+          }
           return text(`QR code written to ${output_path} (${modules}×${modules} modules, error correction ${errorCorrection}).`);
         }
         return text(svg);
@@ -78,7 +103,7 @@ export function buildServer({ client = createClient({ apiKey: process.env.QRLIFE
         'Create an editable QR code that redirects to `destination`. The response gives `shortUrl` (the URL to encode in the QR code; ' +
         'pass it to generate_qr_code to get the image) and `link` (the same code as a short link on qrkeep.me). ' +
         'The destination can be changed later, scans are counted, and the code keeps redirecting even if the plan ends. Needs QRLIFETIME_API_KEY.',
-      inputSchema: { destination: z.string().url().describe('http or https URL the code redirects to.'), ...codeFields },
+      inputSchema: { destination: httpUrl.describe('http or https URL the code redirects to.'), ...codeFields },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
     async ({ destination, name, design }) => {
@@ -114,7 +139,7 @@ export function buildServer({ client = createClient({ apiKey: process.env.QRLIFE
       description: 'Change the destination, name or style of a dynamic QR code. Printed codes follow the new destination on the next scan. Needs QRLIFETIME_API_KEY.',
       inputSchema: {
         slug: z.string().describe('Slug of the code.'),
-        destination: z.string().url().optional().describe('New http or https destination.'),
+        destination: httpUrl.optional().describe('New http or https destination.'),
         ...codeFields,
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },

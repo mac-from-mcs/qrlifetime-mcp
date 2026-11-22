@@ -25,7 +25,7 @@ export function createClient({ apiKey, baseUrl = DEFAULT_BASE, fetchImpl = fetch
         Authorization: `Bearer ${apiKey}`,
         Accept: 'application/json',
         ...(body ? { 'Content-Type': 'application/json' } : {}),
-        'User-Agent': 'qrlifetime-mcp/1.0.0',
+        'User-Agent': 'qrlifetime-mcp/1.0.1',
       },
       body: body ? JSON.stringify(body) : undefined,
     });
