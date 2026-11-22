@@ -1,6 +1,6 @@
 {
   "name": "qrlifetime-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for QR codes: generate static QR codes offline as SVG, and create, edit and track dynamic QR codes with the QRLifetime API.",
   "mcpName": "io.github.mac-from-mcs/qrlifetime",
   "type": "module",
