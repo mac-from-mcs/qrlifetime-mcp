@@ -73,3 +73,20 @@ test('API tools call the REST API with the key', async () => {
   const empty = await c.callTool({ name: 'update_dynamic_qr_code', arguments: { slug: 'ab3k7mx' } });
   assert.ok(empty.isError);
 });
+
+test('security: no overwrite, http(s) destinations only, safe API base', async () => {
+  const { safeBase } = await import('../src/server.js');
+  const c = await connect(createClient({ apiKey: 'qrl_test1234_secretsecretsecretsecret', fetchImpl: async () => new Response('{}') }));
+  const dir = await mkdtemp(join(tmpdir(), 'qrl-'));
+  const out = join(dir, 'a.svg');
+  assert.ok(!(await c.callTool({ name: 'generate_qr_code', arguments: { text: 'one', output_path: out } })).isError);
+  const again = await c.callTool({ name: 'generate_qr_code', arguments: { text: 'two', output_path: out } });
+  assert.ok(again.isError);
+  assert.match(await readFile(out, 'utf8'), /^<svg/);
+  const js = await c.callTool({ name: 'create_dynamic_qr_code', arguments: { destination: 'javascript:alert(1)' } });
+  assert.ok(js.isError);
+  assert.equal(safeBase('http://evil.example/api'), undefined);
+  assert.equal(safeBase('not a url'), undefined);
+  assert.equal(safeBase('https://staging.example/api/v1/'), 'https://staging.example/api/v1');
+  assert.equal(safeBase('http://localhost:3000/api/v1'), 'http://localhost:3000/api/v1');
+});
