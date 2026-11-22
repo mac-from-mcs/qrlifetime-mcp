@@ -1,0 +1,33 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.mac-from-mcs/qrlifetime",
+  "title": "QRLifetime",
+  "description": "Static QR codes as SVG, offline, plus dynamic QR codes you can edit and track with QRLifetime.",
+  "websiteUrl": "https://qrlifetime.com/developers/",
+  "repository": {
+    "url": "https://github.com/mac-from-mcs/qrlifetime-mcp",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "qrlifetime-mcp",
+      "version": "1.0.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "QRLIFETIME_API_KEY",
+          "description": "API key from https://app.qrlifetime.com/api-keys (Business plan). Only needed for dynamic QR codes; generate_qr_code works without it.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

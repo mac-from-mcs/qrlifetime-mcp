@@ -1,0 +1,21 @@
+{
+  "name": "qrlifetime-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for QR codes: generate static QR codes offline as SVG, and create, edit and track dynamic QR codes with the QRLifetime API.",
+  "mcpName": "io.github.mac-from-mcs/qrlifetime",
+  "type": "module",
+  "bin": { "qrlifetime-mcp": "src/index.js" },
+  "files": ["src", "README.md", "LICENSE"],
+  "engines": { "node": ">=18" },
+  "keywords": ["mcp", "model-context-protocol", "qr-code", "qrcode", "qr-code-generator", "dynamic-qr-code", "url-shortener"],
+  "homepage": "https://qrlifetime.com/developers/",
+  "repository": { "type": "git", "url": "git+https://github.com/mac-from-mcs/qrlifetime-mcp.git" },
+  "license": "MIT",
+  "author": "MCS (https://qrlifetime.com)",
+  "scripts": { "test": "node --test test/*.test.js" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "qrcode-generator": "2.0.4",
+    "zod": "3.25.76"
+  }
+}
